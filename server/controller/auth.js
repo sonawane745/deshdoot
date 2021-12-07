@@ -1,14 +1,16 @@
 const User = require("../model/userModel");
-const CryptoJS = require("crypto-js");
+const bcrypt =require("bcrypt")
+
 const jwt = require("jsonwebtoken");
 
 exports.addUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const hashPassword = await bcrypt.hash(password,10)
     const newUser = new User({
       name,
       email,
-      password: CryptoJS.AES.encrypt(password, process.env.PASS_SEC).toString(),
+      password:hashPassword
     });
     await newUser.save();
     res.status(201).json({ succcess: true,message:"Registerd successfully" });
@@ -23,12 +25,8 @@ exports.loginUser = async (req, res) => {
     if (!user) {
       return res.status(400).json("Wrong Email or Password");
     }
-    const hashPassword = CryptoJS.AES.decrypt(
-      user.password,
-      process.env.PASS_SEC
-    );
-    const pass = hashPassword.toString(CryptoJS.enc.Utf8);
-    if (pass !== req.body.password) {
+    const validate =await bcrypt.compare(req.body.password,user.password)
+    if (!validate) {
       return res.status(400).json("Wrong Email or Password");
     }
     const accessToken =await jwt.sign({
